@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>線上測驗</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Noto+Serif+TC:wght@600;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/quiz/common.css">
+<script src="/quiz/prefs.js"></script>
+<style>
+
+  /* ---------- 入口：主視覺 ---------- */
+  header.top { position: relative; overflow: hidden; padding: 44px 16px 92px; background: var(--tech-bg); }
+  header.top::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: var(--tech-grid); }
+  header.top::before { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; z-index: 1; background: var(--tech-line); box-shadow: 0 0 14px rgba(0,229,255,.6); }
+  header.top .seal {
+    width: 76px; height: 76px; margin: 0 auto 12px; position: relative; z-index: 1;
+    filter: drop-shadow(0 0 18px rgba(0,229,255,.55));
+  }
+  header.top h1 {
+    font-family: var(--serif); font-weight: 900; font-size: clamp(1.45rem, 5vw, 2.3rem); letter-spacing: .06em; position: relative; z-index: 1;
+    background: var(--tech-text); -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 0 14px rgba(0,229,255,.35));
+  }
+  header.top .sub { position: relative; z-index: 1; font-size: 1rem; color: #9fdcff; letter-spacing: .08em; }
+  header.top.compact { padding: 22px 16px 26px; }
+  header.top.compact .seal { display: none; }
+  header.top.compact h1 { font-size: clamp(1.15rem, 3.6vw, 1.6rem); }
+
+  .entry { position: relative; z-index: 2; margin-top: -64px; padding: 26px 24px 24px; border-radius: 20px; border: 1px solid var(--line);
+    box-shadow: 0 2px 4px rgba(27,42,65,.05), 0 24px 48px -20px rgba(27,42,65,.35); max-width: 640px; margin-left: auto; margin-right: auto; }
+  .entry h2 { font-family: var(--serif); font-size: 1.35rem; color: var(--primary); text-align: center; }
+  .chips { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; border-radius: 99px; padding: 4px 12px; font-size: .85rem; background: var(--chip-bg); color: var(--chip-fg); border: 1px solid var(--line); }
+  .chip.warn { background: var(--gold-soft); color: var(--accent); border-color: color-mix(in srgb, var(--gold) 40%, transparent); }
+  .divider { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: .82rem; margin: 22px 0 12px; }
+  .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+  .start-grid { display: grid; grid-template-columns: 1fr 1fr 1.5fr; gap: 12px; }
+  .start-grid .field input { padding: 12px 14px; font-size: 1.05rem; border-radius: 12px; border-width: 1.5px; background: var(--input-bg); }
+  .start-grid .field input:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 4px rgba(200,137,43,.15); background: var(--card); }
+  .mode-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .mode-choice {
+    position: relative; border: 2px solid var(--line); border-radius: 14px; padding: 14px 14px 12px 52px; cursor: pointer; background: var(--card-2); text-align: left; color: var(--text); transition: .15s;
+  }
+  .mode-choice::before { content: attr(data-icon); position: absolute; left: 14px; top: 14px; font-size: 1.4rem; }
+  .mode-choice b { display: block; color: var(--primary); }
+  .mode-choice span { font-size: .84rem; color: var(--muted); }
+  .mode-choice:hover { border-color: #e4c78f; }
+  .mode-choice.active { border-color: var(--gold); background: var(--gold-soft); box-shadow: 0 6px 16px -10px rgba(200,137,43,.9); }
+  .mode-choice.active::after { content: "✓"; position: absolute; right: 12px; top: 10px; width: 22px; height: 22px; border-radius: 50%; background: var(--gold); color: #fff; font-size: .8rem; display: grid; place-items: center; font-weight: 700; }
+  .mode-single { display: flex; gap: 12px; align-items: center; border-radius: 14px; background: var(--gold-soft); border: 1px solid color-mix(in srgb, var(--gold) 40%, transparent); padding: 12px 14px; }
+  .mode-single .i { font-size: 1.5rem; }
+  .mode-single b { color: var(--primary); }
+  .mode-single span { display: block; font-size: .84rem; color: var(--muted); }
+  .btn-start {
+    width: 100%; margin-top: 20px; padding: 14px; font-size: 1.12rem; font-weight: 800; letter-spacing: .1em; border: none; border-radius: 14px; color: #fff;
+    background: linear-gradient(135deg, #d99a3a, #b97618); box-shadow: 0 10px 22px -10px rgba(185,118,24,.9); transition: .15s;
+  }
+  .btn-start:hover { filter: brightness(1.06); transform: translateY(-1px); }
+  .btn-start:disabled { opacity: .6; transform: none; }
+  .rules { list-style: none; margin-top: 16px; display: grid; gap: 6px; font-size: .86rem; color: var(--muted); }
+  .rules li { display: flex; gap: 8px; }
+  .meta-line { color: var(--muted); font-size: .9rem; margin-top: 4px; }
+
+  .state { text-align: center; padding: 10px 4px 4px; }
+  .state .big { font-size: 3rem; line-height: 1.2; }
+  .state h2 { margin-top: 6px; }
+  .state p { color: var(--muted); margin-top: 8px; }
+  .code-form { display: flex; gap: 8px; max-width: 360px; margin: 18px auto 0; }
+  .code-form input {
+    flex: 1; min-width: 0; text-align: center; font-family: ui-monospace, Consolas, monospace; font-size: 1.4rem; letter-spacing: .3em; text-transform: uppercase;
+    border: 2px solid var(--line); border-radius: 12px; padding: 10px; background: var(--input-bg); color: var(--text);
+  }
+  .code-form input:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 4px rgba(200,137,43,.15); }
+  .code-form .btn { border-radius: 12px; padding: 0 18px; }
+
+  .status-bar { display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: center; }
+  .stat { font-size: .9rem; color: var(--muted); }
+  .stat b { color: var(--text); }
+  .progress { flex-basis: 100%; height: 8px; background: var(--track); border-radius: 99px; overflow: hidden; }
+  .progress > div { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent-gold), var(--accent)); transition: width .3s; }
+
+  .result { text-align: center; border-top: 5px solid var(--accent-gold); }
+  .score-circle {
+    width: 120px; height: 120px; border-radius: 50%; margin: 0 auto 10px; display: grid; place-items: center;
+    background: radial-gradient(circle, var(--card) 58%, transparent 59%), conic-gradient(var(--accent-gold) var(--pct, 0%), var(--track) 0);
+  }
+  .score-circle b { font-size: 2.2rem; color: var(--primary); line-height: 1; }
+  .score-circle small { display: block; color: var(--muted); font-size: .78rem; }
+  .rank { font-size: 1.15rem; font-weight: 700; color: var(--accent); }
+  .filters { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+  .filters .btn.active { background: var(--btn-primary); color: #fff; border-color: var(--btn-primary); }
+  .actions { text-align: center; margin-top: 26px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+  @media (max-width: 640px) {
+    header.top { padding: 34px 16px 84px; }
+    .entry { padding: 22px 16px 18px; }
+    .start-grid { grid-template-columns: 1fr 1fr; }
+    .start-grid .field:last-child { grid-column: 1 / -1; }
+    .mode-choices { grid-template-columns: 1fr; }
+    .card { padding: 16px; }
+    .nav-btn { width: 32px; height: 32px; }
+  }
+  @media print {
+    .nav-grid, .actions, .filters, .btn-flag { display: none !important; }
+    .q-card { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<header class="top" id="hero">
+  <span class="seal logo-img quiz-mark" aria-hidden="true">卷</span>
+  <h1 id="hTitle">線上測驗</h1>
+  <div class="sub" id="hSub">載入中…</div>
+</header>
+
+<main class="container">
+  <!-- 狀態（無代碼／未開放／已截止／錯誤） -->
+  <section class="card entry hidden" id="noticeCard"></section>
+
+  <!-- 開始作答 -->
+  <section class="card entry hidden" id="startCard">
+    <h2 id="aTitle"></h2>
+    <div class="chips" id="aMeta"></div>
+
+    <div class="divider">輸入老師指定的代碼</div>
+    <div class="start-grid">
+      <div class="field"><label for="inClass">班級代碼</label><input id="inClass" maxlength="20" placeholder="101" autocomplete="off"></div>
+      <div class="field"><label for="inSeat">座號</label><input id="inSeat" type="number" inputmode="numeric" min="1" max="99" placeholder="7"></div>
+      <div class="field"><label for="inName">作答代號</label><input id="inName" maxlength="20" placeholder="請用指定代號" autocomplete="off"></div>
+    </div>
+
+    <div class="divider">作答模式</div>
+    <div id="modeBox"></div>
+
+    <button class="btn-start" id="btnStart">開始作答</button>
+    <div id="startMsg"></div>
+    <ul class="rules">
+      <li>📌 成績以<b>第一次交卷</b>為準，之後再作答只算練習。</li>
+      <li>💾 作答會自動存檔，網路斷線或重新整理後，可在同一瀏覽器以相同班級代碼、座號和代號接續。</li>
+      <li>🔖 不確定的題目可以先「標記」，交卷前回頭檢查。</li>
+    </ul>
+  </section>
+
+  <!-- 作答區 -->
+  <section id="quizArea" class="hidden">
+    <div class="card status-bar">
+      <div class="stat">考生：<b id="sWho"></b></div>
+      <div class="stat">模式：<b id="sMode"></b></div>
+      <div class="stat">進度：<b id="sProgress">0 / 0</b></div>
+      <div class="stat" id="sScoreWrap">即時得分：<b id="sScore">0 分</b></div>
+      <div class="stat">標記待查：<b id="sFlag" style="color:var(--flag)">0 題</b></div>
+      <div class="progress"><div id="sBar"></div></div>
+    </div>
+    <div id="attemptMsg"></div>
+
+    <div class="card result hidden" id="resultCard">
+      <div class="score-circle" id="scoreCircle"><div><b id="rScore">0</b><small>總得分</small></div></div>
+      <div class="rank" id="rRank"></div>
+      <div class="meta-line" id="rDesc"></div>
+      <div class="filters">
+        <button class="btn btn-sm active" data-filter="all">全部題目</button>
+        <button class="btn btn-sm" data-filter="wrong">只看錯題 (<span id="rWrong">0</span>)</button>
+        <button class="btn btn-sm" data-filter="flagged">標記題目 (<span id="rFlag">0</span>)</button>
+        <button class="btn btn-sm" onclick="window.print()">🖨️ 列印詳解</button>
+      </div>
+    </div>
+
+    <div class="nav-grid">
+      <div class="nav-legend" id="navLegend"></div>
+      <div class="nav-buttons" id="navButtons"></div>
+    </div>
+
+    <div id="questions"></div>
+
+    <div class="actions">
+      <button class="btn btn-gold" id="btnSubmit">送出試卷・結算成績</button>
+      <button class="btn hidden" id="btnAgain">再作答一次（不計分）</button>
+    </div>
+  </section>
+</main>
+
+<script>
+(() => {
+  const API = '/quiz/api';
+  const L = ['A', 'B', 'C', 'D'];
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const store = {
+    get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+  };
+  const fmtTime = iso => iso ? new Date(iso).toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : '';
+
+  const code = (new URLSearchParams(location.search).get('a') || '').trim().toUpperCase();
+  let A = null;          // 派卷資料（含題目，不含答案）
+  let S = null;          // 本次作答狀態
+  let chosenMode = null;
+  const answers = {};    // qid -> choice
+  const checked = {};    // qid -> {correct, answer, explanation}（即時模式）
+  const flagged = new Set();
+  let submitted = false;
+  let finalResult = null;
+
+  async function api(path, opts = {}) {
+    const res = await fetch(API + path, {
+      method: opts.method || 'GET',
+      headers: opts.body ? { 'content-type': 'application/json' } : {},
+      body: opts.body ? JSON.stringify(opts.body) : undefined
+    });
+    let data = {};
+    try { data = await res.json(); } catch {}
+    if (!res.ok) throw new Error(data.error || `連線錯誤（${res.status}）`);
+    return data;
+  }
+
+  function toast(text) {
+    const t = document.createElement('div');
+    t.className = 'toast'; t.textContent = text;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 2600);
+  }
+
+  function state(icon, title, text, extra = '') {
+    $('noticeCard').innerHTML = `<div class="state"><div class="big">${icon}</div><h2>${title}</h2><p>${text}</p>${extra}</div>`;
+    $('noticeCard').classList.remove('hidden');
+  }
+
+  function codeForm(prefill = '') {
+    return `<form class="code-form" id="codeForm">
+      <input id="codeIn" maxlength="6" placeholder="六碼代碼" autocomplete="off" value="${esc(prefill)}" aria-label="考卷代碼">
+      <button class="btn btn-primary">進入</button></form>`;
+  }
+  function bindCodeForm() {
+    const f = $('codeForm');
+    if (!f) return;
+    f.onsubmit = e => {
+      e.preventDefault();
+      const v = $('codeIn').value.trim().toUpperCase();
+      if (/^[A-Z0-9]{6}$/.test(v)) location.href = `/quiz/?a=${v}`;
+      else { $('codeIn').focus(); toast('代碼是 6 個英數字'); }
+    };
+  }
+
+  function remain(iso) {
+    const ms = Date.parse(iso) - Date.now();
+    if (ms <= 0) return '';
+    const m = Math.floor(ms / 60000), h = Math.floor(m / 60);
+    return h >= 24 ? `${Math.floor(h / 24)} 天後截止` : h ? `剩 ${h} 小時 ${m % 60} 分` : `剩 ${m} 分鐘`;
+  }
+
+  // ---------- 載入派卷 ----------
+  async function load() {
+    if (!code) {
+      $('hSub').textContent = '輸入老師給的考卷代碼即可開始';
+      state('🗝️', '輸入考卷代碼', '代碼是 6 個英數字，老師的測驗連結最後 <b>?a=</b> 後面那串就是。', codeForm());
+      bindCodeForm();
+      $('codeIn').focus();
+      return;
+    }
+    try {
+      A = await api(`/assignment/${encodeURIComponent(code)}`);
+    } catch (e) {
+      $('hSub').textContent = '無法載入考卷';
+      state('🔍', '找不到這份考卷', esc(e.message) + '<br>請確認代碼，或重新輸入。', codeForm(code));
+      bindCodeForm();
+      return;
+    }
+    document.title = `${A.title}｜線上測驗`;
+    $('hTitle').textContent = A.quizTitle || A.title;
+    // 派卷名稱和試卷名稱相同時不重複顯示
+    $('hSub').textContent = A.title !== (A.quizTitle || A.title) ? A.title : `${A.questions ? `共 ${A.questions.length} 題・` : ''}滿分 100 分`;
+    if (A.status !== 'open') {
+      if (A.status === 'not_started') state('⏳', '還沒開放作答', `這份考卷將於 <b>${fmtTime(A.opensAt)}</b> 開放，時間到再重新整理本頁。`);
+      else state('🔒', '考卷已截止', '這份考卷已經停止作答，有問題請洽老師。');
+      return;
+    }
+    $('aTitle').textContent = A.title;
+    const chips = [`📝 共 ${A.questions.length} 題`, '💯 滿分 100 分'];
+    if (A.closesAt) chips.push(`⏰ ${fmtTime(A.closesAt)} 截止`);
+    const left = A.closesAt ? remain(A.closesAt) : '';
+    $('aMeta').innerHTML = chips.map(c => `<span class="chip">${c}</span>`).join('') + (left ? `<span class="chip warn">⌛ ${left}</span>` : '');
+
+    const saved = store.get(`quiz-attempt:${code}`) || {};
+    $('inClass').value = saved.className || '';
+    $('inSeat').value = saved.seat || '';
+    $('inName').value = saved.name || '';
+
+    renderModeChoice();
+    $('startCard').classList.remove('hidden');
+  }
+
+  const MODE_INFO = {
+    instant: { icon: '⚡', name: '每題作答即時核對', desc: '選完立刻看到對錯與解析，選了就不能改。' },
+    full: { icon: '📋', name: '全部做完再核對', desc: '可以修改答案，交卷後才公布成績與解析。' }
+  };
+
+  function renderModeChoice() {
+    chosenMode = A.modes[0];
+    if (A.modes.length === 1) {
+      const m = MODE_INFO[chosenMode];
+      $('modeBox').innerHTML = `<div class="mode-single"><span class="i">${m.icon}</span><div><b>${m.name}</b><span>${m.desc}</span></div></div>`;
+      return;
+    }
+    $('modeBox').innerHTML = `<div class="mode-choices">${A.modes.map(m => `
+      <button type="button" class="mode-choice${m === chosenMode ? ' active' : ''}" data-mode="${m}" data-icon="${MODE_INFO[m].icon}">
+        <b>${MODE_INFO[m].name}</b><span>${MODE_INFO[m].desc}</span>
+      </button>`).join('')}</div>`;
+    $('modeBox').querySelectorAll('.mode-choice').forEach(btn => btn.onclick = () => {
+      chosenMode = btn.dataset.mode;
+      $('modeBox').querySelectorAll('.mode-choice').forEach(b => b.classList.toggle('active', b === btn));
+    });
+  }
+
+  // ---------- 開始作答 ----------
+  $('btnStart').onclick = async () => {
+    const body = { code, className: $('inClass').value.trim(), seat: $('inSeat').value.trim(), name: $('inName').value.trim(), mode: chosenMode };
+    $('startMsg').innerHTML = '';
+    if (!body.className || !body.seat || !body.name) {
+      $('startMsg').innerHTML = '<div class="msg msg-err">請完整填寫班級、座號與作答代號。</div>';
+      return;
+    }
+    $('btnStart').disabled = true;
+    try {
+      const key = `quiz-attempt:${code}`;
+      const saved = store.get(key);
+      if (saved?.className === body.className && saved.seat === body.seat && saved.name === body.name) {
+        body.resumeToken = saved.token;
+      }
+      S = await api('/start', { method: 'POST', body });
+      store.set(key, { className: body.className, seat: body.seat, name: body.name, token: S.token });
+      beginQuiz();
+    } catch (e) {
+      $('startMsg').innerHTML = `<div class="msg msg-err">${esc(e.message)}</div>`;
+    } finally {
+      $('btnStart').disabled = false;
+    }
+  };
+
+  function beginQuiz() {
+    Object.keys(answers).forEach(k => delete answers[k]);
+    Object.keys(checked).forEach(k => delete checked[k]);
+    flagged.clear();
+    submitted = false; finalResult = null;
+    for (const [qid, v] of Object.entries(S.answers || {})) {
+      answers[qid] = v.choice;
+      if (S.mode === 'instant') checked[qid] = v;
+    }
+
+    $('startCard').classList.add('hidden');
+    $('hero').classList.add('compact');
+    $('quizArea').classList.remove('hidden');
+    $('resultCard').classList.add('hidden');
+    $('btnSubmit').classList.remove('hidden');
+    $('btnAgain').classList.add('hidden');
+    $('sWho').textContent = `${S.className} 班 ${S.seat} 號 ${S.name}`;
+    $('sMode').textContent = MODE_INFO[S.mode].name;
+    $('sScoreWrap').classList.toggle('hidden', S.mode !== 'instant');
+    $('navLegend').textContent = S.mode === 'instant'
+      ? '綠：答對｜紅：答錯｜紫框：標記待查｜白：未答'
+      : '藍：已作答｜紫框：標記待查｜白：未答';
+
+    const msgs = [];
+    if (S.resumed) msgs.push(`<div class="msg msg-info">已接續你上次尚未交卷的作答（第 ${S.attemptNo} 次${S.mode !== chosenMode ? `，模式維持「${MODE_INFO[S.mode].name}」` : ''}）。</div>`);
+    if (!S.counted) {
+      const f = S.first;
+      msgs.push(`<div class="msg msg-warn">你已交過這份考卷${f ? `（${fmtTime(f.submittedAt)}，${f.score} 分）` : ''}，成績以第一次為準；這次作答<b>不計分</b>，只供練習。</div>`);
+    }
+    $('attemptMsg').innerHTML = msgs.join('');
+
+    renderQuestions();
+    updateProgress();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ---------- 題目 ----------
+  function renderQuestions() {
+    const nav = $('navButtons'), box = $('questions');
+    nav.innerHTML = ''; box.innerHTML = '';
+    let part = '';
+    A.questions.forEach((q, i) => {
+      if (q.part && q.part !== part) {
+        part = q.part;
+        box.insertAdjacentHTML('beforeend', `<h3 class="part-header">📌 ${q.part}</h3>`);
+      }
+      const nb = document.createElement('button');
+      nb.type = 'button'; nb.className = 'nav-btn'; nb.id = `nav-${q.id}`; nb.textContent = i + 1;
+      nb.onclick = () => $(`q-${q.id}`).scrollIntoView({ behavior: 'smooth', block: 'start' });
+      nav.appendChild(nb);
+
+      const card = document.createElement('article');
+      card.className = 'card q-card'; card.id = `q-${q.id}`;
+      card.innerHTML = `
+        <div class="q-head">
+          <div><span class="q-num">第 ${i + 1} 題</span><span class="q-tag">${esc(q.tag || '單選題')}</span></div>
+          <button type="button" class="btn-flag" id="flag-${q.id}">🔖 標記此題</button>
+        </div>
+        <div class="q-title">${q.title}</div>
+        <div>${q.options.map((o, k) => `
+          <button type="button" class="opt" id="opt-${q.id}-${k}" data-q="${q.id}" data-k="${k}">
+            <span class="letter">${L[k]}</span><span>${o}</span>
+          </button>`).join('')}</div>
+        <div id="fb-${q.id}"></div>
+        <div id="exp-${q.id}"></div>`;
+      box.appendChild(card);
+      card.querySelector('.btn-flag').onclick = () => toggleFlag(q.id);
+      card.querySelectorAll('.opt').forEach(b => b.onclick = () => choose(q.id, Number(b.dataset.k)));
+      paintQuestion(q.id);
+    });
+  }
+
+  function paintQuestion(qid) {
+    const q = A.questions.find(x => x.id == qid);
+    const c = answers[qid];
+    const chk = submitted ? finalResult.results.find(r => r.id == qid) : checked[qid];
+    const nav = $(`nav-${qid}`);
+    nav.className = 'nav-btn' + (flagged.has(Number(qid)) ? ' is-flagged' : '');
+    q.options.forEach((_, k) => {
+      const el = $(`opt-${qid}-${k}`);
+      el.className = 'opt';
+      el.disabled = submitted || (S.mode === 'instant' && c !== undefined && c !== null);
+      if (chk) {
+        if (k === chk.answer) el.classList.add('correct-answer');
+        else if (k === c) el.classList.add('wrong-selected');
+      } else if (k === c) el.classList.add('selected');
+    });
+    const fb = $(`fb-${qid}`), exp = $(`exp-${qid}`);
+    if (chk) {
+      const ok = c === chk.answer;
+      nav.classList.add(ok ? 'is-correct' : 'is-wrong');
+      fb.innerHTML = c == null
+        ? `<div class="feedback fail">未作答。正確答案為 (${L[chk.answer]})</div>`
+        : ok ? '<div class="feedback pass">🎉 答對了！</div>'
+             : `<div class="feedback fail">❌ 答錯了！正確答案為 (${L[chk.answer]})</div>`;
+      exp.innerHTML = chk.explanation ? `<div class="exp"><div class="exp-title">💡 解析</div>${chk.explanation}</div>` : '';
+      $(`q-${qid}`).dataset.status = ok ? 'correct' : 'wrong';
+    } else {
+      if (c !== undefined && c !== null) nav.classList.add('answered');
+      fb.innerHTML = ''; exp.innerHTML = '';
+    }
+  }
+
+  const pending = new Set();
+  async function choose(qid, k) {
+    if (submitted || pending.has(qid)) return;
+    if (S.mode === 'instant') {
+      if (answers[qid] !== undefined) return;
+      pending.add(qid);
+      try {
+        const r = await api('/answer', { method: 'POST', body: { token: S.token, qid, choice: k } });
+        answers[qid] = r.choice;
+        checked[qid] = r;
+        paintQuestion(qid);
+        updateProgress();
+      } catch (e) { toast(e.message); }
+      finally { pending.delete(qid); }
+    } else {
+      answers[qid] = k;
+      paintQuestion(qid);
+      updateProgress();
+      api('/answer', { method: 'POST', body: { token: S.token, qid, choice: k } })
+        .catch(() => toast('網路不穩，答案暫存在本機，交卷時會一併送出。'));
+    }
+  }
+
+  function toggleFlag(qid) {
+    flagged.has(qid) ? flagged.delete(qid) : flagged.add(qid);
+    const on = flagged.has(qid);
+    $(`q-${qid}`).classList.toggle('is-flagged', on);
+    const b = $(`flag-${qid}`);
+    b.classList.toggle('active', on);
+    b.textContent = on ? '🟣 已標記待查' : '🔖 標記此題';
+    paintQuestion(qid);
+    updateProgress();
+  }
+
+  function updateProgress() {
+    const total = A.questions.length;
+    const done = Object.values(answers).filter(v => v !== null && v !== undefined).length;
+    $('sProgress').textContent = `${done} / ${total}`;
+    $('sBar').style.width = `${total ? done / total * 100 : 0}%`;
+    $('sFlag').textContent = `${flagged.size} 題`;
+    if (S.mode === 'instant') {
+      const right = Object.values(checked).filter(c => c.correct).length;
+      $('sScore').textContent = `${Math.round(right * 100 / total)} 分`;
+    }
+  }
+
+  // ---------- 交卷 ----------
+  $('btnSubmit').onclick = async () => {
+    if (submitted) return;
+    const total = A.questions.length;
+    const done = Object.values(answers).filter(v => v !== null && v !== undefined).length;
+    const warn = [];
+    if (done < total) warn.push(`還有 ${total - done} 題沒有作答（未答以零分計）。`);
+    if (flagged.size) warn.push(`還有 ${flagged.size} 題標記待查。`);
+    if (!confirm(`${warn.join('\n')}${warn.length ? '\n' : ''}確定要送出試卷嗎？送出後就不能再修改。`)) return;
+    $('btnSubmit').disabled = true;
+    try {
+      finalResult = await api('/submit', { method: 'POST', body: { token: S.token, answers: S.mode === 'full' ? answers : undefined } });
+      submitted = true;
+      finalResult.results.forEach(r => { answers[r.id] = r.choice; });
+      A.questions.forEach(q => paintQuestion(q.id));
+      showResult();
+    } catch (e) {
+      alert(`交卷失敗：${e.message}\n請檢查網路後再按一次「送出試卷」。`);
+    } finally {
+      $('btnSubmit').disabled = false;
+    }
+  };
+
+  function showResult() {
+    const r = finalResult;
+    const wrong = r.total - r.correctCount;
+    $('rScore').textContent = r.score;
+    $('scoreCircle').style.setProperty('--pct', `${r.score}%`);
+    $('rRank').textContent =
+      r.score === 100 ? '🏆 狀元及第・出神入化！' :
+      r.score >= 90 ? '🌟 榜眼及第・答題高手！' :
+      r.score >= 80 ? '👏 探花及第・表現優良！' :
+      r.score >= 70 ? '👍 登科進士・具備良好素養！' :
+      r.score >= 60 ? '📖 勤加補漏・已有基礎能力！' : '💪 韋編三絕・再接再厲多加複習！';
+    $('rDesc').textContent = `共 ${r.total} 題，答對 ${r.correctCount} 題，答錯或未答 ${wrong} 題。` +
+      (r.counted ? '成績已送交老師。' : '這次為練習，不列入成績。');
+    $('rWrong').textContent = wrong;
+    $('rFlag').textContent = flagged.size;
+    $('resultCard').classList.remove('hidden');
+    $('btnSubmit').classList.add('hidden');
+    $('btnAgain').classList.remove('hidden');
+    $('navLegend').textContent = '綠：答對｜紅：答錯或未答｜紫框：標記待查';
+    $('resultCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  document.querySelectorAll('.filters [data-filter]').forEach(btn => btn.onclick = () => {
+    const f = btn.dataset.filter;
+    document.querySelectorAll('.filters [data-filter]').forEach(b => b.classList.toggle('active', b === btn));
+    A.questions.forEach(q => {
+      const card = $(`q-${q.id}`);
+      card.style.display = f === 'all' || (f === 'wrong' && card.dataset.status === 'wrong') || (f === 'flagged' && flagged.has(q.id)) ? '' : 'none';
+    });
+  });
+
+  $('btnAgain').onclick = () => {
+    $('quizArea').classList.add('hidden');
+    $('hero').classList.remove('compact');
+    $('startCard').classList.remove('hidden');
+    $('startMsg').innerHTML = '<div class="msg msg-warn">再作答一次不會改變你的正式成績。</div>';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  load();
+})();
+</script>
+</body>
+</html>

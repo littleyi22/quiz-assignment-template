@@ -1,0 +1,16 @@
+name = "quiz-assignment-template"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+workers_dev = true
+preview_urls = false
+
+[assets]
+directory = "public"
+binding = "ASSETS"
+run_worker_first = ["/quiz/api/*"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "quiz-assignment"
+# 僅供本機開發，部署前請換成你建立的 D1 資料庫 ID。
+database_id = "00000000-0000-0000-0000-000000000000"

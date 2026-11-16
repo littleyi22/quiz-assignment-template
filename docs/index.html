@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>掃碼派卷測驗｜從題庫 JSON 到學生 QR Code</title>
+<meta name="description" content="用 Cloudflare Workers 與 D1 架設線上測驗。從匯入四選一題庫、教師派卷與 QR Code，到學生交卷和成績匯出。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="掃碼派卷測驗｜從題庫 JSON 到學生 QR Code">
+<meta property="og:description" content="一份 GitHub 範本，帶你完成題庫匯入、教師派卷、學生掃碼作答與成績檢討。">
+<meta property="og:image" content="https://littleyi22.github.io/quiz-assignment-template/teacher-form.webp">
+<link rel="canonical" href="https://littleyi22.github.io/quiz-assignment-template/">
+<link rel="stylesheet" href="style.css">
+<script src="copy.js" defer></script>
+</head>
+<body>
+<header class="top">
+  <div class="wrap top-inner">
+    <a class="brand" href="#">掃碼派卷測驗</a>
+    <nav aria-label="頁內導覽"><a href="#local">本機試跑</a><a href="#publish">上線部署</a><a href="#architecture">系統架構</a></nav>
+  </div>
+</header>
+<main id="main">
+  <section class="hero">
+    <div class="wrap hero-inner">
+      <div>
+        <p class="eyebrow">Cloudflare Workers ＋ D1</p>
+        <h1>把你的題庫<br>變成掃碼就能作答的考卷</h1>
+        <p class="lead">匯入四選一題庫，用教師後台設定測驗時間和作答模式。學生掃碼進入，交卷後即可從後台查看成績、投影檢討或匯出 CSV。</p>
+        <div class="actions"><a class="button primary" href="https://github.com/littleyi22/quiz-assignment-template">查看 GitHub Repo ↗</a><a class="button secondary" href="#local">開始試跑 ↓</a></div>
+      </div>
+      <figure>
+        <img src="teacher-form.webp" alt="教師後台的派卷表單，包含試卷、開放與截止時間，以及兩種作答模式" width="370" height="590">
+        <figcaption>教師後台實際畫面 · 使用範例題庫</figcaption>
+      </figure>
+    </div>
+  </section>
+  <div class="wrap content">
+    <section id="local" aria-labelledby="local-title">
+      <p class="eyebrow">本機試跑</p>
+      <h2 id="local-title">先用範例題庫跑完一份考卷</h2>
+      <ol class="steps">
+        <li><h3>下載程式並建立資料表</h3><p>從 GitHub 下載原始碼或複製 Repo。安裝 Node.js 22 以上版本，在專案根目錄執行以下命令。</p>
+          <div class="command"><button type="button">複製指令</button><pre><code>npm ci
+npm run db:init</code></pre></div>
+        </li>
+        <li><h3>設定本機密碼與匯入金鑰</h3><p>把 <code>.dev.vars.example</code> 複製為 <code>.dev.vars</code>。將 <code>TEACHER_PASSWORD</code> 與 <code>AGENT_API_KEY</code> 換成各自的值，然後啟動本機服務。</p>
+          <div class="command"><button type="button">複製指令</button><pre><code>npm run dev</code></pre></div>
+        </li>
+        <li><h3>檢查並匯入題庫 JSON</h3><p>另開終端機，設定 <code>QUIZ_AGENT_KEY</code>，值與剛才的 <code>AGENT_API_KEY</code> 相同。第一行只驗證格式，第二行只建試卷。要換題目，可從 <a href="https://github.com/littleyi22/quiz-assignment-template/blob/main/examples/quiz.json">範例 JSON</a> 開始，每題填題幹、四個選項、正確答案與解析。</p>
+          <div class="command"><button type="button">複製指令</button><pre><code>npm run quiz:import -- examples/quiz.json --check
+npm run quiz:import -- examples/quiz.json --no-assign</code></pre></div>
+        </li>
+        <li><h3>派卷、作答、回後台看成績</h3><p>開啟本機教師頁 <code>http://127.0.0.1:8787/quiz/teacher/</code>，用教師密碼登入。選卷、確認時間及作答模式後，按「派出考卷」。用同一台電腦開啟學生網址，填虛構代碼測試。交卷後，從清單進入「成績與檢討」。</p></li>
+      </ol>
+    </section>
+    <section id="publish" aria-labelledby="publish-title">
+      <p class="eyebrow">上線部署</p>
+      <h2 id="publish-title">用自己的 Cloudflare 帳號發布</h2>
+      <p>先登入並建立一個新的 D1 資料庫，把回傳的資料庫 ID 填到 <code>wrangler.toml</code>。你也可以更改 Worker 的 <code>name</code>，決定自己的站點名稱。</p>
+      <div class="command"><button type="button">複製指令</button><pre><code>npx wrangler login
+npx wrangler d1 create quiz-assignment</code></pre></div>
+      <p>初始化正式資料表後部署 Worker，再設定站點的兩個 Secret。測試用與正式用的值請分開管理。</p>
+      <div class="command"><button type="button">複製指令</button><pre><code>npx wrangler d1 execute quiz-assignment --remote --file schema.sql
+npm run deploy
+npx wrangler secret put TEACHER_PASSWORD
+npx wrangler secret put AGENT_API_KEY</code></pre></div>
+      <p>把 <code>QUIZ_BASE_URL</code> 設為 Wrangler 回傳的 HTTPS 根網址，將 <code>QUIZ_AGENT_KEY</code> 設為正式匯入金鑰，再用上面的匯入命令建卷。開啟自己站點的 <code>/quiz/teacher/</code> 派卷，用手機掃 QR Code，確認能開卷、交卷並回傳成績。</p>
+      <p class="tip"><strong>手機掃碼前</strong>　本機的 <code>127.0.0.1</code> 只指向開啟網址的那台裝置。要從手機試掃，請使用手機可連線的正式 HTTPS 網址。</p>
+      <p><a href="https://developers.cloudflare.com/workers/wrangler/commands/d1/">查閱 Cloudflare D1 指令 ↗</a></p>
+    </section>
+    <section id="architecture" aria-labelledby="architecture-title">
+      <p class="eyebrow">製作方式</p>
+      <h2 id="architecture-title">前端、Worker 與資料庫怎麼配合</h2>
+      <div class="flow">
+        <article><h3>瀏覽器畫面</h3><p>HTML、CSS、JavaScript 提供學生作答與教師派卷兩個入口。教師端用本站根網址及六碼派卷代碼組出學生網址，當場編碼成 QR Code，可直接下載 SVG。</p><a href="https://github.com/littleyi22/quiz-assignment-template/tree/main/public/quiz">查看前端來源 ↗</a></article>
+        <article><h3>Cloudflare Worker</h3><p>處理教師登入、題庫匯入、派卷時間、學生作答憑證與伺服器計分。全卷核對模式會等學生交卷才提供結果。</p><a href="https://github.com/littleyi22/quiz-assignment-template/blob/main/src/index.js">查看 API 實作 ↗</a></article>
+        <article><h3>D1 資料庫</h3><p>將試卷、題目、派卷、作答及答案存為五張資料表。每一份派卷按班級代碼和座號區分作答，第一份交卷是正式成績。</p><a href="https://github.com/littleyi22/quiz-assignment-template/blob/main/schema.sql">查看資料表 ↗</a></article>
+      </div>
+      <details><summary>作答資料會存在哪裡？</summary><p>作答代號與成績儲存在部署者的 D1。續答使用同一瀏覽器保存的憑證。公開範例採虛構題庫，使用時請發指定代碼，避免要求學生輸入真實姓名。學生端沒有帳號驗身，適合課堂練習及低風險評量。</p></details>
+    </section>
+  </div>
+</main>
+<footer><div class="wrap"><a href="https://github.com/littleyi22/quiz-assignment-template">GitHub 原始碼與完整 README ↗</a></div></footer>
+</body>
+</html>

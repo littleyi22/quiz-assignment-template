@@ -1,0 +1,14 @@
+{
+  "name": "quiz-assignment-template",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local --port 8787",
+    "db:init": "wrangler d1 execute quiz-assignment --local --file schema.sql",
+    "quiz:import": "node scripts/agent-create-quiz.mjs",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "4.123.0"
+  }
+}
